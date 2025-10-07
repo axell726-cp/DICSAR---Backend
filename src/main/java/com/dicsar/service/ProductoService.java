@@ -1,19 +1,22 @@
 package com.dicsar.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 
 import com.dicsar.dto.ProductoDTO;
-import com.dicsar.dto.ReglaPrecioDTO;
+import com.dicsar.dto.ResultadoProductoDTO;
+import com.dicsar.entity.CambioPrecio;
 import com.dicsar.entity.Categoria;
+import com.dicsar.entity.Notificacion;
 import com.dicsar.entity.Producto;
-import com.dicsar.enums.TipoRegla;
 import com.dicsar.repository.CategoriaRepository;
 import com.dicsar.repository.ProductoRepository;
 
 import jakarta.persistence.EntityNotFoundException;
+import validator.ProductoValidator;
 
 @Service
 public class ProductoService {
@@ -21,13 +24,20 @@ public class ProductoService {
 	 private final ProductoRepository productoRepository;
 	 
 	 private final CategoriaRepository categoriaRepository;
-
-	    private static final double MAX_PRECIO = 10000;
+	 
+	 private final ReglaPrecioService reglaPrecioService;
+	 
+	 private final ProductoValidator productoValidator;
 	    
-	    public ProductoService(ProductoRepository productoRepository,
-                CategoriaRepository categoriaRepository) {
-	    	this.productoRepository = productoRepository;
-	    	this.categoriaRepository = categoriaRepository;
+	 public ProductoService(
+	            ProductoRepository productoRepository,
+	            CategoriaRepository categoriaRepository,
+	            ReglaPrecioService reglaPrecioService,
+	            ProductoValidator productoValidator) {
+	        this.productoRepository = productoRepository;
+	        this.categoriaRepository = categoriaRepository;
+	        this.reglaPrecioService = reglaPrecioService;
+	        this.productoValidator = productoValidator;
 	    }
 
 	    // ---- CRUD ----
@@ -40,34 +50,42 @@ public class ProductoService {
 	                .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado"));
 	    }
 
-	    public Producto guardar(Producto producto) {
-	    	return productoRepository.save(producto);
-	    }
+	    public ResultadoProductoDTO guardar(ProductoDTO dto) {
+	        productoValidator.validar(dto);
 
-	    public Producto guardarDTO(ProductoDTO dto) {
-	        validarPrecio(dto.getPrecioBase());
+	        Categoria cat = categoriaRepository.findById(dto.getCategoriaId())
+	                .orElseThrow(() -> new IllegalArgumentException("Categoría no encontrada"));
 
 	        Producto producto = Producto.builder()
 	                .nombre(dto.getNombre())
 	                .descripcion(dto.getDescripcion())
 	                .precio(dto.getPrecioBase())
 	                .stock(dto.getStock())
+	                .categoria(cat)
 	                .estado(true)
 	                .fechaCreacion(LocalDateTime.now())
 	                .fechaActualizacion(LocalDateTime.now())
 	                .build();
-	        
-	        Categoria cat = categoriaRepository.findById(dto.getCategoriaId())
-	                   .orElseThrow(() -> new IllegalArgumentException("Categoría no encontrada"));
-	        		producto.setCategoria(cat);
 
+	        productoRepository.save(producto);
 
-	        return productoRepository.save(producto);
+	        return new ResultadoProductoDTO(producto, List.of());
 	    }
 
-	    public Producto actualizar(Long id, ProductoDTO dto) {
+	    public ResultadoProductoDTO actualizar(Long id, ProductoDTO dto) {
+	        productoValidator.validar(dto);
+
 	        Producto producto = obtenerPorId(id);
-	        validarPrecio(dto.getPrecioBase());
+	        Producto anterior = producto.copiaLigera();
+
+	        if (!producto.getPrecio().equals(dto.getPrecioBase())) {
+	            if (producto.getHistorialCambios() == null)
+	                producto.setHistorialCambios(new ArrayList<>());
+
+	            producto.getHistorialCambios().add(
+	                new CambioPrecio(LocalDateTime.now(), producto.getPrecio(), dto.getPrecioBase())
+	            );
+	        }
 
 	        producto.setNombre(dto.getNombre());
 	        producto.setDescripcion(dto.getDescripcion());
@@ -75,20 +93,17 @@ public class ProductoService {
 	        producto.setStock(dto.getStock());
 	        producto.setFechaActualizacion(LocalDateTime.now());
 
-	        return productoRepository.save(producto);
+	        List<Notificacion> alertas = reglaPrecioService.evaluarCambios(anterior, producto);
+
+	        productoRepository.save(producto);
+
+	        return new ResultadoProductoDTO(producto, alertas);
 	    }
 
 	    public void cambiarEstado(Long id, boolean nuevoEstado) {
 	        Producto producto = obtenerPorId(id);
 
-	        if (!nuevoEstado && producto.getStock() > 0) {
-	            throw new IllegalStateException("No se puede inactivar un producto con stock disponible");
-	        }
-
-	        if (nuevoEstado && producto.getFechaVencimiento() != null &&
-	                producto.getFechaVencimiento().isBefore(LocalDateTime.now())) {
-	            throw new IllegalStateException("No se puede activar un producto vencido");
-	        }
+	        productoValidator.validarCambioEstado(producto, nuevoEstado);
 
 	        producto.setEstado(nuevoEstado);
 	        producto.setFechaActualizacion(LocalDateTime.now());
@@ -103,37 +118,5 @@ public class ProductoService {
 	        }
 
 	        productoRepository.delete(producto);
-	    }
-
-	    // ---- Validaciones ----
-	    private void validarPrecio(Double precio) {
-	        if (precio == null || precio < 0) {
-	            throw new IllegalArgumentException("El precio no puede ser negativo o nulo");
-	        }
-	        if (precio > MAX_PRECIO) {
-	            throw new IllegalArgumentException("El precio no puede superar los " + MAX_PRECIO);
-	        }
-	    }
-
-	    public void validarReglaPrecio(ReglaPrecioDTO regla) {
-	        TipoRegla tipo = regla.getTipoRegla();
-
-	        switch (tipo) {
-	            case DESCUENTO_CANTIDAD -> {
-	                if (regla.getCantidadMinima() == null || regla.getPorcentaje() == null) {
-	                    throw new IllegalArgumentException("La regla por cantidad requiere cantidad mínima y porcentaje");
-	                }
-	            }
-	            case CLIENTE_ESPECIAL -> {
-	                if (regla.getClienteId() == null || regla.getPorcentaje() == null) {
-	                    throw new IllegalArgumentException("La regla de cliente especial requiere clienteId y porcentaje");
-	                }
-	            }
-	            case PROMOCION -> {
-	                if (regla.getMonto() == null || regla.getFechaInicio() == null || regla.getFechaFin() == null) {
-	                    throw new IllegalArgumentException("La promoción requiere monto fijo y fechas válidas");
-	                }
-	            }
-	        }
 	    }
 }

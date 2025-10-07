@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.dicsar.dto.ProductoDTO;
+import com.dicsar.dto.ResultadoProductoDTO;
 import com.dicsar.entity.Producto;
 import com.dicsar.service.ProductoService;
 
@@ -36,15 +37,16 @@ public class ProductoController {
     }
 
     @PostMapping
-    public ResponseEntity<Producto> crear(@Valid @RequestBody ProductoDTO dto) {
-        Producto producto = productoService.guardarDTO(dto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(producto);
+    public ResponseEntity<ResultadoProductoDTO> crear(@Valid @RequestBody ProductoDTO dto) {
+    	ResultadoProductoDTO resultado = productoService.guardar(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(resultado);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Producto> actualizar(@PathVariable Long id, @Valid @RequestBody ProductoDTO dto) {
-        Producto producto = productoService.actualizar(id, dto);
-        return ResponseEntity.ok(producto);
+    public ResponseEntity<ResultadoProductoDTO> actualizar(@PathVariable Long id,
+                                                           @Valid @RequestBody ProductoDTO dto) {
+        ResultadoProductoDTO resultado = productoService.actualizar(id, dto);
+        return ResponseEntity.ok(resultado);
     }
 
     @PutMapping("/{id}/estado")
