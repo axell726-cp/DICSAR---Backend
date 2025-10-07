@@ -10,18 +10,28 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Proveedor {
+public class Cliente {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idProveedor;
+    private Long idCliente;
 
-    private String razonSocial;
-    private String ruc;
+    private String nombre;
+    private String apellidos;
+
+    // Tipo de documento: puede ser DNI o RUC
+    private String tipoDocumento; // Ejemplo: "DNI" o "RUC"
+    private String numeroDocumento;
+
     private String direccion;
     private String telefono;
     private String email;
-    private String contacto; // persona de contacto o encargado comercial
+
+    // Si el cliente es empresa, se guarda la razón social
+    private String razonSocial;
+
+    @Builder.Default
+    private Boolean esEmpresa = false;
 
     @Builder.Default
     private Boolean estado = true;

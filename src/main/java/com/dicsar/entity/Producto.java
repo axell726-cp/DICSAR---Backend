@@ -1,7 +1,6 @@
 package com.dicsar.entity;
 
 import java.time.LocalDateTime;
-
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -26,9 +25,9 @@ public class Producto {
 
     private String nombre;
     private String codigo;
-    private String unidadMedida;
     private Double precio;
-    private Integer stock;
+    private Integer stockMinimo;
+    private Integer stockActual;
     
     @Builder.Default
     private Boolean estado = true;
@@ -44,6 +43,10 @@ public class Producto {
     @ManyToOne
     @JoinColumn(name = "id_categoria")
     private Categoria categoria;
+
+    @ManyToOne
+    @JoinColumn(name = "id_unidad_medida", nullable = false)
+    private UnidadMed unidadMedida;
 
     @ManyToOne
     @JoinColumn(name = "id_proveedor", nullable = false)
