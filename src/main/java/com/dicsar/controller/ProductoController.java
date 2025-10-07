@@ -43,7 +43,7 @@ public class ProductoController {
     	return productoService.obtener(id)
                 .map(p -> {
                     p.setNombre(producto.getNombre());
-                    p.setDescripcion(producto.getDescripcion());
+                    p.setCodigo(producto.getCodigo());
                     p.setPrecio(producto.getPrecio());
                     p.setStock(producto.getStock());
                     p.setFechaVencimiento(producto.getFechaVencimiento());

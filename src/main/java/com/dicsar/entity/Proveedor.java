@@ -2,38 +2,37 @@ package com.dicsar.entity;
 
 import java.time.LocalDateTime;
 
-import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
-
+import lombok.Setter;
+import lombok.Data;
+import jakarta.persistence.Entity;
 @Entity
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class Producto {
-	
-	@Id
+@Getter
+@Setter
+public class Proveedor {
+@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idProducto;
-
+    private Long id_Proveedor;
     private String nombre;
-    private String codigo;
-    private String unidadMedida;
-    private Double precio;
-    private Integer stock;
+    private String apellidos;
+    private String razonSocial;
+    private String direccion;
+    private String telefono;
+    private String email;
+    private String ruc;
     
     @Builder.Default
     private Boolean estado = true;
-    
-    private LocalDateTime fechaVencimiento;
 
     @Builder.Default
     private LocalDateTime fechaCreacion = LocalDateTime.now();
@@ -41,11 +40,5 @@ public class Producto {
     @Builder.Default
     private LocalDateTime fechaActualizacion = LocalDateTime.now();
 
-    @ManyToOne
-    @JoinColumn(name = "id_categoria")
-    private Categoria categoria;
 
-    @ManyToOne
-    @JoinColumn(name = "id_proveedor", nullable = false)
-    private Proveedor proveedor;
 }
