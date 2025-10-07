@@ -39,8 +39,8 @@ Para mantener orden, seguimos este esquema de ramas:
 
 1. **Clonar el repositorio**
    ```bash
-   git clone https://github.com/axell726-cp/DICSAR---Backend.git
-   cd DICSAR---Backend
+   git clone https://github.com/axell726-cp/DICSAR-Backend.git
+   cd DICSAR-Backend
 2. **Listar ramas disponibles**
    ```bash
    git branch -a
