@@ -19,10 +19,10 @@ import com.dicsar.repository.CategoriaRepository;
 import com.dicsar.repository.ProductoRepository;
 import com.dicsar.repository.ProveedorRepository;
 import com.dicsar.repository.UnidadMedRepository;
+import com.dicsar.validator.ProductoValidator;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import validator.ProductoValidator;
 
 @Service
 @RequiredArgsConstructor
