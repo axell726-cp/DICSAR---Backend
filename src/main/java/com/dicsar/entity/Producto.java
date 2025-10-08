@@ -1,6 +1,7 @@
 package com.dicsar.entity;
 
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -25,6 +26,7 @@ public class Producto {
 
     private String nombre;
     private String codigo;
+    private String descripcion;
     private Double precio;
     private Integer stockMinimo;
     private Integer stockActual;
@@ -42,6 +44,7 @@ public class Producto {
 
     @ManyToOne
     @JoinColumn(name = "id_categoria")
+    @JsonBackReference
     private Categoria categoria;
 
     @ManyToOne

@@ -7,124 +7,198 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import com.dicsar.dto.ProductoDTO;
+import com.dicsar.dto.ReglaPrecioDTO;
+import com.dicsar.entity.Categoria;
 import com.dicsar.entity.Producto;
+import com.dicsar.entity.Proveedor;
+import com.dicsar.entity.UnidadMed;
+import com.dicsar.enums.TipoRegla;
+import com.dicsar.repository.CategoriaRepository;
 import com.dicsar.repository.ProductoRepository;
+import com.dicsar.repository.ProveedorRepository;
+import com.dicsar.repository.UnidadMedRepository;
+
+import jakarta.persistence.EntityNotFoundException;
 
 @Service
 public class ProductoService {
 
     private final ProductoRepository productoRepository;
+	private final CategoriaRepository categoriaRepository;
+	private final ProveedorRepository proveedorRepository;
+    private final UnidadMedRepository unidadMedidaRepository;
+	private static final double MAX_PRECIO = 10000;
+	    
+	    public ProductoService(ProductoRepository productoRepository, CategoriaRepository categoriaRepository, ProveedorRepository proveedorRepository,
+	    		UnidadMedRepository unidadMedidaRepository) {
+	    	this.productoRepository = productoRepository;
+	    	this.categoriaRepository = categoriaRepository;
+	    	this.proveedorRepository = proveedorRepository;
+	        this.unidadMedidaRepository = unidadMedidaRepository;
+	    }
+	    
+	 // ---- CRUD ----
 
-    public ProductoService(ProductoRepository productoRepository) {
-        this.productoRepository = productoRepository;
-    }
+	    public List<Producto> listar() {
+	        return productoRepository.findAll();
+	    }
 
-    // Listar todos
-    public List<Producto> listar() {
-        return productoRepository.findAll();
-    }
+	    public Optional<Producto> obtener(Long id) {
+	        return productoRepository.findById(id);
+	    }
 
-    // Obtener uno
-    public Optional<Producto> obtener(Long idProducto) {
-        return productoRepository.findById(idProducto);
-    }
+	    public Producto guardarDTO(ProductoDTO dto) {
+	        validarCamposDTO(dto);
+	        validarPrecio(dto.getPrecioBase());
 
-    // Guardar con validaciones
-    public Producto guardar(Producto producto) {
-        validarProducto(producto);
+	        Categoria categoria = categoriaRepository.findById(dto.getCategoriaId())
+	                .orElseThrow(() -> new IllegalArgumentException("Categoría no encontrada"));
+	        
+	        Proveedor proveedor = proveedorRepository.findById(dto.getProveedorId())
+	        	    .orElseThrow(() -> new IllegalArgumentException("Proveedor no encontrado"));
+	        
+	        UnidadMed unidad = unidadMedidaRepository.findById(dto.getUnidadMedidaId())
+	        	    .orElseThrow(() -> new IllegalArgumentException("Unidad de medida no encontrada"));
 
-        if (producto.getIdProducto() == null) {
-            // Nuevo producto
-            producto.setFechaCreacion(LocalDateTime.now());
-            producto.setEstado(true);
-        } else {
-            // Actualización
-            producto.setFechaActualizacion(LocalDateTime.now());
-        }
+	        Producto producto = Producto.builder()
+	                .nombre(dto.getNombre())
+	                .descripcion(dto.getDescripcion())
+	                .codigo(dto.getCodigo())
+	                .precio(dto.getPrecioBase())
+	                .stockActual(dto.getStockActual())
+	                .stockMinimo(dto.getStockMinimo())
+	                .estado(true)
+	                .categoria(categoria)
+	                .proveedor(proveedor)
+	                .unidadMedida(unidad)
+	                .fechaCreacion(LocalDateTime.now())
+	                .fechaActualizacion(LocalDateTime.now())
+	                .build();
 
-        return productoRepository.save(producto);
-    }
+	        return productoRepository.save(producto);
+	    }
 
-    // Eliminar con validaciones
-    public void eliminar(Long idProducto) {
-        Optional<Producto> productoOpt = productoRepository.findById(idProducto);
+	    public Producto actualizar(Long id, ProductoDTO dto) {
+	        Producto producto = productoRepository.findById(id)
+	                .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado"));
 
-        if (!productoOpt.isPresent()) {
-            throw new RuntimeException("Producto no encontrado");
-        }
+	        validarCamposDTO(dto);
+	        validarPrecio(dto.getPrecioBase());
 
-        Producto producto = productoOpt.get();
+	        producto.setNombre(dto.getNombre());
+	        producto.setDescripcion(dto.getDescripcion());
+	        producto.setCodigo(dto.getCodigo());
+	        producto.setPrecio(dto.getPrecioBase());
+	        producto.setStockActual(dto.getStockActual());
+	        producto.setStockMinimo(dto.getStockMinimo());
+	        producto.setFechaActualizacion(LocalDateTime.now());
 
-        // No eliminar si está activo
-        if (Boolean.TRUE.equals(producto.getEstado())) {
-            throw new RuntimeException("No se puede eliminar un producto activo. Desactívelo primero.");
-        }
+	        if (dto.getCategoriaId() != null) {
+	            Categoria categoria = categoriaRepository.findById(dto.getCategoriaId())
+	                    .orElseThrow(() -> new IllegalArgumentException("Categoría no encontrada"));
+	            producto.setCategoria(categoria);
+	        }
+	        
+	        if (dto.getProveedorId() != null) {
+	            Proveedor proveedor = proveedorRepository.findById(dto.getProveedorId())
+	                    .orElseThrow(() -> new IllegalArgumentException("Proveedor no encontrado"));
+	            producto.setProveedor(proveedor);
+	        }
 
-        productoRepository.deleteById(idProducto);
-    }
+	        if (dto.getUnidadMedidaId() != null) {
+	            UnidadMed unidad = unidadMedidaRepository.findById(dto.getUnidadMedidaId())
+	                    .orElseThrow(() -> new IllegalArgumentException("Unidad de medida no encontrada"));
+	            producto.setUnidadMedida(unidad);
+	        }
 
-    public Optional<Producto> getOne(Long idProducto) {
-        return productoRepository.findById(idProducto);
-    }
 
-    /**
-     * Validaciones de reglas de negocio
-     */
-    private void validarProducto(Producto producto) {
-        // 1. Nombre obligatorio
-        if (!StringUtils.hasText(producto.getNombre())) {
-            throw new RuntimeException("El nombre del producto es obligatorio.");
-        }
+	        return productoRepository.save(producto);
+	    }
 
-        // 2. Código obligatorio
-        if (!StringUtils.hasText(producto.getCodigo())) {
-            throw new RuntimeException("El código del producto es obligatorio.");
-        }
+	    public void cambiarEstado(Long id, boolean nuevoEstado) {
+	        Producto producto = productoRepository.findById(id)
+	                .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado"));
 
-        // 3. Código único
-        if (productoRepository.existsByCodigo(producto.getCodigo())) {
-            // si ya existe otro con ese código y no es el mismo
-            Optional<Producto> existente = productoRepository.findByCodigo(producto.getCodigo());
-            if (existente.isPresent() && 
-               (producto.getIdProducto() == null || 
-                !existente.get().getIdProducto().equals(producto.getIdProducto()))) {
-                throw new RuntimeException("El código ya existe, debe ser único.");
-            }
-        }
+	        if (!nuevoEstado && producto.getStockActual() > 0) {
+	            throw new IllegalStateException("No se puede inactivar un producto con stock disponible");
+	        }
 
-        // 4. Categoría obligatoria
-        if (producto.getCategoria() == null) {
-            throw new RuntimeException("El producto debe estar asociado a una categoría.");
-        }
+	        if (nuevoEstado && producto.getFechaVencimiento() != null &&
+	                producto.getFechaVencimiento().isBefore(LocalDateTime.now())) {
+	            throw new IllegalStateException("No se puede activar un producto vencido");
+	        }
 
-        // 5. Unidad de medida obligatoria
-        if (producto.getUnidadMedida() == null) {
-            throw new RuntimeException("El producto debe tener una unidad de medida.");
-        }
+	        producto.setEstado(nuevoEstado);
+	        producto.setFechaActualizacion(LocalDateTime.now());
+	        productoRepository.save(producto);
+	    }
 
-        // 6. Proveedor obligatorio
-        if (producto.getProveedor() == null) {
-            throw new RuntimeException("El producto debe tener un proveedor.");
-        }
+	    public void eliminarConRegla(Long id) {
+	        Producto producto = productoRepository.findById(id)
+	                .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado"));
 
-        // 7. Precio válido (>0)
-        if (producto.getPrecio() == null || producto.getPrecio() <= 0) {
-            throw new RuntimeException("El producto debe tener un precio base mayor a 0.");
-        }
+	        if (Boolean.TRUE.equals(producto.getEstado())) {
+	            throw new IllegalStateException("No se puede eliminar un producto activo. Primero cámbielo a inactivo.");
+	        }
 
-        // 8. Stock actual no puede ser negativo
-        if (producto.getStockActual() != null && producto.getStockActual() < 0) {
-            throw new RuntimeException("El stock actual no puede ser negativo.");
-        }
+	        productoRepository.delete(producto);
+	    }
 
-        // 9. Stock mínimo obligatorio y válido
-        if (producto.getStockMinimo() == null || producto.getStockMinimo() < 0) {
-            throw new RuntimeException("El producto debe tener un stock mínimo definido.");
-        }
+	    // ---- Validaciones ----
 
-        // 10. Estado obligatorio
-        if (producto.getEstado() == null) {
-            throw new RuntimeException("El estado del producto es obligatorio (activo/inactivo).");
-        }
-    }
+	    private void validarCamposDTO(ProductoDTO dto) {
+	        if (!StringUtils.hasText(dto.getNombre())) {
+	            throw new IllegalArgumentException("El nombre del producto es obligatorio.");
+	        }
+
+	        if (!StringUtils.hasText(dto.getCodigo())) {
+	            throw new IllegalArgumentException("El código del producto es obligatorio.");
+	        }
+
+	        Optional<Producto> existente = productoRepository.findByCodigo(dto.getCodigo());
+	        if (existente.isPresent() && (dto.getIdProducto() == null ||
+	                !existente.get().getIdProducto().equals(dto.getIdProducto()))) {
+	            throw new IllegalArgumentException("El código ya existe, debe ser único.");
+	        }
+
+	        if (dto.getPrecioBase() == null || dto.getPrecioBase() <= 0) {
+	            throw new IllegalArgumentException("El producto debe tener un precio base mayor a 0.");
+	        }
+
+	        if (dto.getStockActual() != null && dto.getStockActual() < 0) {
+	            throw new IllegalArgumentException("El stock no puede ser negativo.");
+	        }
+	    }
+
+	    private void validarPrecio(Double precio) {
+	        if (precio == null || precio < 0) {
+	            throw new IllegalArgumentException("El precio no puede ser negativo o nulo");
+	        }
+	        if (precio > MAX_PRECIO) {
+	            throw new IllegalArgumentException("El precio no puede superar los " + MAX_PRECIO);
+	        }
+	    }
+
+	    public void validarReglaPrecio(ReglaPrecioDTO regla) {
+	        TipoRegla tipo = regla.getTipoRegla();
+
+	        switch (tipo) {
+	            case DESCUENTO_CANTIDAD -> {
+	                if (regla.getCantidadMinima() == null || regla.getPorcentaje() == null) {
+	                    throw new IllegalArgumentException("La regla por cantidad requiere cantidad mínima y porcentaje");
+	                }
+	            }
+	            case CLIENTE_ESPECIAL -> {
+	                if (regla.getClienteId() == null || regla.getPorcentaje() == null) {
+	                    throw new IllegalArgumentException("La regla de cliente especial requiere clienteId y porcentaje");
+	                }
+	            }
+	            case PROMOCION -> {
+	                if (regla.getMonto() == null || regla.getFechaInicio() == null || regla.getFechaFin() == null) {
+	                    throw new IllegalArgumentException("La promoción requiere monto fijo y fechas válidas");
+	                }
+	            }
+	        }
+	    }
 }
