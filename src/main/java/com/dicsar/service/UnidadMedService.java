@@ -27,15 +27,28 @@ public class UnidadMedService {
     }
 
     public UnidadMed guardar(UnidadMed unidadMed) {
-        validarUnidadMed(unidadMed);
+        validarUnidadMed(unidadMed, null);
         return unidadMedRepository.save(unidadMed);
+    }
+    
+    public UnidadMed actualizar(Long id, UnidadMed unidadMed) {
+        UnidadMed existente = unidadMedRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("No se encontró la unidad de medida con ID " + id));
+
+        validarUnidadMed(unidadMed, id);
+
+        existente.setNombre(unidadMed.getNombre());
+        existente.setAbreviatura(unidadMed.getAbreviatura());
+        existente.setEstado(unidadMed.getEstado());
+
+        return unidadMedRepository.save(existente);
     }
 
     public void eliminar(Long id) {
         unidadMedRepository.deleteById(id);
     }
 
-    private void validarUnidadMed(UnidadMed unidadMed) {
+    private void validarUnidadMed(UnidadMed unidadMed, Long id) {
         // Validar nombre obligatorio
         if (!StringUtils.hasText(unidadMed.getNombre())) {
             throw new RuntimeException("El nombre de la unidad de medida es obligatorio.");
@@ -47,13 +60,17 @@ public class UnidadMedService {
         }
 
         // Validar nombre único
-        if (unidadMedRepository.existsByNombre(unidadMed.getNombre())) {
-            throw new RuntimeException("Ya existe una unidad de medida con ese nombre.");
-        }
+        unidadMedRepository.findByNombre(unidadMed.getNombre()).ifPresent(existente -> {
+            if (id == null || !existente.getIdUnidadMed().equals(id)) {
+                throw new RuntimeException("Ya existe una unidad de medida con ese nombre.");
+            }
+        });
 
         // Validar abreviatura única
-        if (unidadMedRepository.existsByAbreviatura(unidadMed.getAbreviatura())) {
-            throw new RuntimeException("Ya existe una unidad de medida con esa abreviatura.");
-        }
+        unidadMedRepository.findByAbreviatura(unidadMed.getAbreviatura()).ifPresent(existente -> {
+            if (id == null || !existente.getIdUnidadMed().equals(id)) {
+                throw new RuntimeException("Ya existe una unidad de medida con esa abreviatura.");
+            }
+        });
     }
 }
