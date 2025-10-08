@@ -11,4 +11,10 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     
     // Validar existencia de producto por código
     boolean existsByCodigo(String codigo);
+    
+    boolean existsByNombreAndCategoriaIdCategoria(String nombre, Long idCategoria);
+    
+    Optional<Producto> findByNombreAndCategoriaIdCategoria(String nombre, Long idCategoria);
+
+
 }
