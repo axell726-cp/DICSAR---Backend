@@ -2,6 +2,7 @@ package com.dicsar.entity;
 
 import java.time.LocalDateTime;
 
+import com.dicsar.enums.NivelAlerta;
 import com.dicsar.enums.TipoAlerta;
 
 import jakarta.persistence.Column;
@@ -30,19 +31,26 @@ public class Notificacion {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+	private String titulo;
+	
+	@Column(length = 500)
+	private String mensaje;
+	
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_producto")
     private Producto producto;
 
     @Enumerated(EnumType.STRING)
     private TipoAlerta tipo;
+    
+    @Enumerated(EnumType.STRING)
+    private NivelAlerta nivel;
 
     @Column(nullable = false, length = 300)
     private String descripcion;
     
     @Column(nullable = false, length = 100)
-    @Builder.Default
-    private String usuario = "admin";
+    private String usuario;
 
     @Builder.Default
     private LocalDateTime fechaHora = LocalDateTime.now();

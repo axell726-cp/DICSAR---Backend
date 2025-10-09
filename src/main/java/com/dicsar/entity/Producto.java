@@ -1,12 +1,17 @@
  package com.dicsar.entity;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+
+import com.dicsar.enums.EstadoVencimiento;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import java.util.ArrayList;
 import java.util.List;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -41,7 +46,10 @@ public class Producto {
     @Builder.Default
     private Boolean estado = true;
     
-    private LocalDateTime fechaVencimiento;
+    private LocalDate fechaVencimiento;
+    
+    @Enumerated(EnumType.STRING)
+    private EstadoVencimiento estadoVencimiento;
 
     @Builder.Default
     private LocalDateTime fechaCreacion = LocalDateTime.now();

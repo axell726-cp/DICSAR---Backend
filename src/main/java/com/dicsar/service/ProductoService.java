@@ -1,6 +1,8 @@
 package com.dicsar.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -15,6 +17,8 @@ import com.dicsar.entity.Notificacion;
 import com.dicsar.entity.Producto;
 import com.dicsar.entity.Proveedor;
 import com.dicsar.entity.UnidadMed;
+import com.dicsar.enums.EstadoVencimiento;
+import com.dicsar.enums.TipoAlerta;
 import com.dicsar.repository.CategoriaRepository;
 import com.dicsar.repository.ProductoRepository;
 import com.dicsar.repository.ProveedorRepository;
@@ -34,10 +38,15 @@ public class ProductoService {
     private final UnidadMedRepository unidadMedidaRepository;
     private final ReglaPrecioService reglaPrecioService;
 	private final ProductoValidator productoValidator;
+	private final NotificacionService notificacionService;
 	    
-	 public List<Producto> listar() {
-	        return productoRepository.findAll();
-	    }
+		public List<Producto> listar() {
+		    List<Producto> productos = productoRepository.findAll();
+		    for (Producto p : productos) {
+		        p.setEstadoVencimiento(ProductoValidator.calcularEstadoVencimiento(p.getFechaVencimiento()));
+		    }
+		    return productos;
+		}
 
 	    public Producto obtenerPorId(Long id) {
 	        return productoRepository.findById(id)
@@ -46,21 +55,25 @@ public class ProductoService {
 
 	    public ResultadoProductoDTO guardar(ProductoDTO dto, String usuario) {
 	        productoValidator.validar(dto);
+	        validarFechaVencimiento(dto.getFechaVencimiento());
 
 	        Producto producto = construirProductoDesdeDTO(dto);
 	        producto.setFechaCreacion(LocalDateTime.now());
 	        producto.setFechaActualizacion(LocalDateTime.now());
 	        producto.setEstado(true);
 
+	        producto.setEstadoVencimiento(ProductoValidator.calcularEstadoVencimiento(dto.getFechaVencimiento()));
+	        
 	        productoRepository.save(producto);
+	        
+	        verificarAlertasProducto(producto, usuario);
 
-	        List<Notificacion> alertas = List.of();
-
-	        return new ResultadoProductoDTO(producto, alertas);
+	        return new ResultadoProductoDTO(producto, List.of());
 	    }
 
 	    public ResultadoProductoDTO actualizar(Long id, ProductoDTO dto, String usuario) {
 	        productoValidator.validar(dto, id);
+	        validarFechaVencimiento(dto.getFechaVencimiento());
 
 	        Producto producto = obtenerPorId(id);
 	        Producto anterior = producto.copiaLigera();
@@ -87,9 +100,14 @@ public class ProductoService {
 	        producto.setProveedor(obtenerProveedor(dto.getProveedorId()));
 	        producto.setUnidadMedida(obtenerUnidad(dto.getUnidadMedidaId()));
 
-	        List<Notificacion> alertas = reglaPrecioService.evaluarCambios(anterior, producto, usuario);
-
+	        producto.setEstadoVencimiento(ProductoValidator.calcularEstadoVencimiento(dto.getFechaVencimiento()));
+	        
 	        productoRepository.save(producto);
+	        
+	        List<Notificacion> alertas = reglaPrecioService.evaluarCambios(anterior, producto, usuario);
+	        
+	        verificarAlertasProducto(producto, usuario);
+	        
 	        return new ResultadoProductoDTO(producto, alertas);
 	    }
 
@@ -122,17 +140,22 @@ public class ProductoService {
 	        Proveedor proveedor = obtenerProveedor(dto.getProveedorId());
 	        UnidadMed unidad = obtenerUnidad(dto.getUnidadMedidaId());
 
-	        return Producto.builder()
+	        Producto producto = Producto.builder()
 	                .nombre(dto.getNombre())
 	                .descripcion(dto.getDescripcion())
 	                .codigo(dto.getCodigo())
 	                .precio(dto.getPrecioBase())
 	                .stockActual(dto.getStockActual())
 	                .stockMinimo(dto.getStockMinimo())
+	                .fechaVencimiento(dto.getFechaVencimiento())
 	                .categoria(categoria)
 	                .proveedor(proveedor)
 	                .unidadMedida(unidad)
 	                .build();
+
+	        producto.setEstadoVencimiento(ProductoValidator.calcularEstadoVencimiento(dto.getFechaVencimiento()));
+
+	        return producto;
 	    }
 
 	    private Categoria obtenerCategoria(Long id) {
@@ -152,4 +175,40 @@ public class ProductoService {
 	        return unidadMedidaRepository.findById(id)
 	                .orElseThrow(() -> new IllegalArgumentException("Unidad de medida no encontrada"));
 	    }
+
+	    private void validarFechaVencimiento(LocalDate fechaVencimiento) {
+	        if (fechaVencimiento == null || !fechaVencimiento.isAfter(LocalDate.now())) {
+	            throw new RuntimeException("La fecha de vencimiento no puede ser menor o igual a la fecha actual.");
+	        }
+	    }
+	    
+	    private void verificarAlertasProducto(Producto producto, String usuario) {
+	        if (producto.getIdProducto() == null) {
+	            productoRepository.flush();
+	        }
+
+	        boolean yaNotificado = notificacionService.existeNotificacionActiva(
+	            producto.getIdProducto(), TipoAlerta.ALERTA_VENCIMIENTO
+	        );
+	        
+	        if (yaNotificado) return;
+
+	        EstadoVencimiento estado = ProductoValidator.calcularEstadoVencimiento(producto.getFechaVencimiento());
+	        producto.setEstadoVencimiento(estado);
+
+	        switch (estado) {
+	            case POR_VENCER -> notificacionService.notificarVencimientoProximo(
+	                    producto,
+	                    ChronoUnit.DAYS.between(LocalDate.now(), producto.getFechaVencimiento()),
+	                    usuario
+	            );
+	            case VENCIDO -> notificacionService.notificarVencimientoExpirado(producto, usuario);
+	            default -> {}
+	        }
+
+	        if (producto.getStockActual() <= producto.getStockMinimo()) {
+	            notificacionService.notificarStockMinimo(producto, usuario);
+	        }
+	    }
+	    
 }
