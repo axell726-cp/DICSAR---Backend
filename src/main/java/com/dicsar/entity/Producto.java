@@ -2,6 +2,9 @@
 
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 import java.util.ArrayList;
 import java.util.List;
 import jakarta.persistence.CollectionTable;
@@ -51,7 +54,7 @@ public class Producto {
 
     @ManyToOne
     @JoinColumn(name = "id_categoria", nullable = false)
-    @JsonBackReference
+    @JsonIgnoreProperties("productos")
     private Categoria categoria;
 
     @ManyToOne

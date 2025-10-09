@@ -16,6 +16,7 @@ import com.dicsar.entity.Producto;
 import com.dicsar.entity.Proveedor;
 import com.dicsar.entity.UnidadMed;
 import com.dicsar.repository.CategoriaRepository;
+import com.dicsar.repository.NotificacionRepository;
 import com.dicsar.repository.ProductoRepository;
 import com.dicsar.repository.ProveedorRepository;
 import com.dicsar.repository.UnidadMedRepository;
@@ -34,6 +35,8 @@ public class ProductoService {
     private final UnidadMedRepository unidadMedidaRepository;
     private final ReglaPrecioService reglaPrecioService;
 	private final ProductoValidator productoValidator;
+    private final NotificacionRepository notificacionRepository;
+
 	    
 	 public List<Producto> listar() {
 	        return productoRepository.findAll();
@@ -43,6 +46,8 @@ public class ProductoService {
 	        return productoRepository.findById(id)
 	                .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado"));
 	    }
+
+	    private final NotificacionService notificacionService;
 
 	    public ResultadoProductoDTO guardar(ProductoDTO dto, String usuario) {
 	        productoValidator.validar(dto);
@@ -54,10 +59,15 @@ public class ProductoService {
 
 	        productoRepository.save(producto);
 
-	        List<Notificacion> alertas = List.of();
+	        // 🔹 Generar alertas de vencimiento automáticamente al guardar
+	        List<Notificacion> alertas = notificacionService.generarAlertasPorVencimiento(producto, usuario);
 
 	        return new ResultadoProductoDTO(producto, alertas);
 	    }
+
+
+
+
 
 	    public ResultadoProductoDTO actualizar(Long id, ProductoDTO dto, String usuario) {
 	        productoValidator.validar(dto, id);
@@ -86,6 +96,8 @@ public class ProductoService {
 	        producto.setCategoria(obtenerCategoria(dto.getCategoriaId()));
 	        producto.setProveedor(obtenerProveedor(dto.getProveedorId()));
 	        producto.setUnidadMedida(obtenerUnidad(dto.getUnidadMedidaId()));
+	        producto.setPrecioCompra(dto.getPrecioCompra());
+	        producto.setFechaVencimiento(dto.getFechaVencimiento());
 
 	        List<Notificacion> alertas = reglaPrecioService.evaluarCambios(anterior, producto, usuario);
 
@@ -132,6 +144,8 @@ public class ProductoService {
 	                .categoria(categoria)
 	                .proveedor(proveedor)
 	                .unidadMedida(unidad)
+	                .precioCompra(dto.getPrecioCompra())
+	                .fechaVencimiento(dto.getFechaVencimiento())
 	                .build();
 	    }
 
@@ -152,4 +166,5 @@ public class ProductoService {
 	        return unidadMedidaRepository.findById(id)
 	                .orElseThrow(() -> new IllegalArgumentException("Unidad de medida no encontrada"));
 	    }
+
 }
