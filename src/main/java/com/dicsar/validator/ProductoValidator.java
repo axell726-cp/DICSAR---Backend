@@ -1,11 +1,12 @@
 package com.dicsar.validator;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.Optional;
 
 import org.springframework.stereotype.Component;
 import com.dicsar.dto.ProductoDTO;
 import com.dicsar.entity.Producto;
+import com.dicsar.enums.EstadoVencimiento;
 import com.dicsar.repository.ProductoRepository;
 
 @Component
@@ -22,6 +23,14 @@ public class ProductoValidator {
     
     public void validar(ProductoDTO dto) {
         validar(dto, null); // Solo delega al método que ya existe, pasando null
+    }
+    
+    public void validarStock(ProductoDTO dto) {
+        if (dto.getStockActual() < dto.getStockMinimo()) {
+            throw new IllegalArgumentException(
+                "El stock actual no puede ser menor al stock mínimo."
+            );
+        }
     }
 
     public void validar(ProductoDTO dto, Long idProducto) {
@@ -73,9 +82,23 @@ public class ProductoValidator {
         if (!nuevoEstado && producto.getStockActual() > 0)
             throw new IllegalStateException("No se puede inactivar un producto con stock disponible.");
 
-        if (nuevoEstado && producto.getFechaVencimiento() != null &&
-                producto.getFechaVencimiento().isBefore(LocalDateTime.now())) {
-            throw new IllegalStateException("No se puede activar un producto vencido.");
+        if (producto.getFechaVencimiento() != null &&
+        	    producto.getFechaVencimiento().isBefore(LocalDate.now())) {
+        	    throw new IllegalStateException("No se puede activar un producto vencido.");
+        	}
+    }
+    
+    public static EstadoVencimiento calcularEstadoVencimiento(LocalDate fechaVencimiento) {
+        if (fechaVencimiento == null) return null;
+
+        LocalDate hoy = LocalDate.now();
+        if (fechaVencimiento.isBefore(hoy)) {
+            return EstadoVencimiento.VENCIDO; // Regla N°3
+        } else if (!fechaVencimiento.isAfter(hoy.plusDays(30))) {
+            return EstadoVencimiento.POR_VENCER; // Regla N°2
+        } else {
+            return EstadoVencimiento.VIGENTE; // Regla N°1
         }
     }
+
 }

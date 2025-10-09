@@ -3,6 +3,7 @@ package com.dicsar.controller;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,22 +33,15 @@ public class UnidadMedController {
     }
 
     @PostMapping
-    public UnidadMed crear(@RequestBody UnidadMed unidadMed) {
-        return unidadMedService.guardar(unidadMed);
+    public ResponseEntity<UnidadMed> guardar(@RequestBody UnidadMed unidadMed) {
+        UnidadMed guardada = unidadMedService.guardar(unidadMed);
+        return ResponseEntity.status(HttpStatus.CREATED).body(guardada);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<UnidadMed> actualizar(@PathVariable Long id, @RequestBody UnidadMed unidadMed) {
-        Optional<UnidadMed> existente = unidadMedService.obtener(id);
-
-        if (existente.isPresent()) {
-            UnidadMed u = existente.get();
-            u.setNombre(unidadMed.getNombre());
-            u.setAbreviatura(unidadMed.getAbreviatura());
-            return ResponseEntity.ok(unidadMedService.guardar(u));
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        UnidadMed actualizada = unidadMedService.actualizar(id, unidadMed);
+        return ResponseEntity.ok(actualizada);
     }
 
     @DeleteMapping("/{id}")

@@ -60,17 +60,20 @@ public class ProveedorService {
         }
 
         if (proveedorRepository.existsByRuc(proveedor.getRuc()) &&
-            (proveedor.getIdProveedor() == null ||
-             !proveedorRepository.findByRuc(proveedor.getRuc()).get().getIdProveedor().equals(proveedor.getIdProveedor()))) {
-            throw new RuntimeException("El RUC ya está registrado para otro proveedor.");
-        }
+        	    (proveedor.getIdProveedor() == null ||
+        	     !proveedorRepository.findByRuc(proveedor.getRuc()).get().getIdProveedor().equals(proveedor.getIdProveedor()))) {
+        	    throw new RuntimeException("El RUC ya está registrado para otro proveedor.");
+        	}
 
         if (!StringUtils.hasText(proveedor.getRazonSocial())) {
             throw new RuntimeException("La razón social es obligatoria.");
         }
 
-        if (proveedor.getEmail() != null && proveedorRepository.existsByEmail(proveedor.getEmail())) {
-            throw new RuntimeException("El correo electrónico ya está registrado para otro proveedor.");
+        if (proveedor.getEmail() != null) {
+            Optional<Proveedor> existenteEmail = proveedorRepository.findByEmail(proveedor.getEmail());
+            if (existenteEmail.isPresent() && !existenteEmail.get().getIdProveedor().equals(proveedor.getIdProveedor())) {
+                throw new RuntimeException("El correo electrónico ya está registrado para otro proveedor.");
+            }
         }
     }
 }

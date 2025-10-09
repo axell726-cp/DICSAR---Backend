@@ -1,7 +1,8 @@
 package com.dicsar.dto;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+
+
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -47,7 +48,10 @@ public class ProductoDTO {
     @NotNull(message = "La unidad de medida es obligatoria")
     private Long unidadMedidaId;
     private Double precioCompra;
-    private LocalDateTime fechaVencimiento;
+
+   
+    @NotNull(message = "La fecha de vencimiento es obligatoria")
+    private LocalDate fechaVencimiento;
 
 
 }
