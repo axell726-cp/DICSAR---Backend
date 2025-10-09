@@ -49,41 +49,53 @@ public class NotificacionService {
 		notificacionRepository.save(n);
 	}
 
-	public void notificarVencimientoProximo(Producto producto, long dias, String usuario) {
-        notificarEvento(
-            producto,
-            TipoAlerta.ALERTA_VENCIMIENTO,
-            NivelAlerta.ADVERTENCIA,
-            "Producto próximo a vencer",
-            "El producto " + producto.getNombre() + " vencerá en " + dias + " días.",
-            "Producto dentro de los próximos 30 días de vencimiento.",
-            usuario
-        );
-    }
+	public Notificacion notificarVencimientoProximo(Producto producto, long dias, String usuario) {
+	    Notificacion n = Notificacion.builder()
+	        .titulo("Producto próximo a vencer")
+	        .mensaje("El producto " + producto.getNombre() + " vencerá en " + dias + " días.")
+	        .tipo(TipoAlerta.ALERTA_VENCIMIENTO)
+	        .nivel(NivelAlerta.ADVERTENCIA)
+	        .descripcion("Producto dentro de los próximos 30 días de vencimiento.")
+	        .usuario(usuario)
+	        .fechaHora(LocalDateTime.now())
+	        .producto(producto)
+	        .build();
 
-    public void notificarVencimientoExpirado(Producto producto, String usuario) {
-        notificarEvento(
-            producto,
-            TipoAlerta.ALERTA_VENCIMIENTO,
-            NivelAlerta.CRITICA,
-            "Producto vencido",
-            "El producto " + producto.getNombre() + " ha vencido y no puede ser comercializado.",
-            "Producto vencido detectado por el sistema.",
-            usuario
-        );
-    }
+	    notificacionRepository.save(n);
+	    return n;
+	}
 
-    public void notificarStockMinimo(Producto producto, String usuario) {
-        notificarEvento(
-            producto,
-            TipoAlerta.STOCK_BAJO,
-            NivelAlerta.ADVERTENCIA,
-            "Stock mínimo alcanzado",
-            "El producto " + producto.getNombre() + " ha alcanzado su stock mínimo.",
-            "El stock actual es igual o menor al stock mínimo configurado.",
-            usuario
-        );
-    }
+	public Notificacion notificarVencimientoExpirado(Producto producto, String usuario) {
+	    Notificacion n = Notificacion.builder()
+	        .titulo("Producto vencido")
+	        .mensaje("El producto " + producto.getNombre() + " ha vencido y no puede ser comercializado.")
+	        .tipo(TipoAlerta.ALERTA_VENCIMIENTO)
+	        .nivel(NivelAlerta.CRITICA)
+	        .descripcion("Producto vencido detectado por el sistema.")
+	        .usuario(usuario)
+	        .fechaHora(LocalDateTime.now())
+	        .producto(producto)
+	        .build();
+
+	    notificacionRepository.save(n);
+	    return n;
+	}
+
+	public Notificacion notificarStockMinimo(Producto producto, String usuario) {
+	    Notificacion n = Notificacion.builder()
+	        .titulo("Stock mínimo alcanzado")
+	        .mensaje("El producto " + producto.getNombre() + " ha alcanzado su stock mínimo.")
+	        .tipo(TipoAlerta.STOCK_BAJO)
+	        .nivel(NivelAlerta.ADVERTENCIA)
+	        .descripcion("El stock actual es igual o menor al stock mínimo configurado.")
+	        .usuario(usuario)
+	        .fechaHora(LocalDateTime.now())
+	        .producto(producto)
+	        .build();
+
+	    notificacionRepository.save(n);
+	    return n;
+	}
     
     public List<NotificacionDTO> mapearADTO(List<Notificacion> notificaciones) {
         return notificaciones.stream()

@@ -55,24 +55,25 @@ public class ProductoService {
 
 	    public ResultadoProductoDTO guardar(ProductoDTO dto, String usuario) {
 	        productoValidator.validar(dto);
+	        productoValidator.validarStock(dto); 
 	        validarFechaVencimiento(dto.getFechaVencimiento());
-
+	        
 	        Producto producto = construirProductoDesdeDTO(dto);
 	        producto.setFechaCreacion(LocalDateTime.now());
 	        producto.setFechaActualizacion(LocalDateTime.now());
 	        producto.setEstado(true);
-
 	        producto.setEstadoVencimiento(ProductoValidator.calcularEstadoVencimiento(dto.getFechaVencimiento()));
 	        
 	        productoRepository.save(producto);
 	        
-	        verificarAlertasProducto(producto, usuario);
+	        List<Notificacion> alertas = verificarAlertasProducto(producto, usuario);
 
-	        return new ResultadoProductoDTO(producto, List.of());
+	        return new ResultadoProductoDTO(producto, alertas);
 	    }
 
 	    public ResultadoProductoDTO actualizar(Long id, ProductoDTO dto, String usuario) {
 	        productoValidator.validar(dto, id);
+	        productoValidator.validarStock(dto);
 	        validarFechaVencimiento(dto.getFechaVencimiento());
 
 	        Producto producto = obtenerPorId(id);
@@ -106,7 +107,7 @@ public class ProductoService {
 	        
 	        List<Notificacion> alertas = reglaPrecioService.evaluarCambios(anterior, producto, usuario);
 	        
-	        verificarAlertasProducto(producto, usuario);
+	        alertas.addAll(verificarAlertasProducto(producto, usuario));
 	        
 	        return new ResultadoProductoDTO(producto, alertas);
 	    }
@@ -182,33 +183,34 @@ public class ProductoService {
 	        }
 	    }
 	    
-	    private void verificarAlertasProducto(Producto producto, String usuario) {
-	        if (producto.getIdProducto() == null) {
-	            productoRepository.flush();
-	        }
-
-	        boolean yaNotificado = notificacionService.existeNotificacionActiva(
-	            producto.getIdProducto(), TipoAlerta.ALERTA_VENCIMIENTO
-	        );
-	        
-	        if (yaNotificado) return;
+	    private List<Notificacion> verificarAlertasProducto(Producto producto, String usuario) {
+	        List<Notificacion> alertas = new ArrayList<>();
 
 	        EstadoVencimiento estado = ProductoValidator.calcularEstadoVencimiento(producto.getFechaVencimiento());
 	        producto.setEstadoVencimiento(estado);
 
-	        switch (estado) {
-	            case POR_VENCER -> notificacionService.notificarVencimientoProximo(
-	                    producto,
-	                    ChronoUnit.DAYS.between(LocalDate.now(), producto.getFechaVencimiento()),
-	                    usuario
-	            );
-	            case VENCIDO -> notificacionService.notificarVencimientoExpirado(producto, usuario);
-	            default -> {}
+	        if (!notificacionService.existeNotificacionActiva(producto.getIdProducto(), TipoAlerta.ALERTA_VENCIMIENTO)) {
+	            switch (estado) {
+	                case POR_VENCER -> alertas.add(
+	                    notificacionService.notificarVencimientoProximo(
+	                        producto,
+	                        ChronoUnit.DAYS.between(LocalDate.now(), producto.getFechaVencimiento()),
+	                        usuario
+	                    )
+	                );
+	                case VENCIDO -> alertas.add(
+	                    notificacionService.notificarVencimientoExpirado(producto, usuario)
+	                );
+	                default -> {}
+	            }
 	        }
 
 	        if (producto.getStockActual() <= producto.getStockMinimo()) {
-	            notificacionService.notificarStockMinimo(producto, usuario);
+	            if (!notificacionService.existeNotificacionActiva(producto.getIdProducto(), TipoAlerta.STOCK_BAJO)) {
+	                alertas.add(notificacionService.notificarStockMinimo(producto, usuario));
+	            }
 	        }
+
+	        return alertas;
 	    }
-	    
 }

@@ -24,6 +24,14 @@ public class ProductoValidator {
     public void validar(ProductoDTO dto) {
         validar(dto, null); // Solo delega al método que ya existe, pasando null
     }
+    
+    public void validarStock(ProductoDTO dto) {
+        if (dto.getStockActual() < dto.getStockMinimo()) {
+            throw new IllegalArgumentException(
+                "El stock actual no puede ser menor al stock mínimo."
+            );
+        }
+    }
 
     public void validar(ProductoDTO dto, Long idProducto) {
         if (dto == null)
