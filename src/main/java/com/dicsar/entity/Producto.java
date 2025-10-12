@@ -5,10 +5,6 @@ import java.time.LocalDateTime;
 
 import com.dicsar.enums.EstadoVencimiento;
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import java.util.ArrayList;
-import java.util.List;
-import jakarta.persistence.CollectionTable;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -17,7 +13,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -71,12 +66,6 @@ public class Producto {
     private Proveedor proveedor;
 
     private Double precioCompra;
-
-    @Builder.Default
-    @ElementCollection
-    @CollectionTable(name = "historial_precios", joinColumns = @JoinColumn(name = "id_producto"))
-    @OrderBy("fechaCambio ASC")
-    private List<CambioPrecio> historialCambios = new ArrayList<>();
     
     public Producto copiaLigera() {
         return Producto.builder()

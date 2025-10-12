@@ -8,8 +8,12 @@ import com.dicsar.entity.Notificacion;
 import com.dicsar.entity.Producto;
 import com.dicsar.enums.NivelAlerta;
 import com.dicsar.enums.TipoAlerta;
+import com.dicsar.repository.HistorialPrecioRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class ReglaPrecioService {
 	
 	private static final double MIN_PRECIO = 1.00;
@@ -17,10 +21,7 @@ public class ReglaPrecioService {
     private static final double VARIACION_UMBRAL = 10.0; // ±10%
 
     private final NotificacionService notificacionService;
-
-    public ReglaPrecioService(NotificacionService notificacionService) {
-        this.notificacionService = notificacionService;
-    }
+    private final HistorialPrecioRepository historialPrecioRepository;
 
     public List<Notificacion> evaluarCambios(Producto anterior, Producto actualizado, String usuario) {
         List<Notificacion> alertas = new ArrayList<>();
@@ -50,16 +51,12 @@ public class ReglaPrecioService {
         }
 
         // 3️⃣ Cambios frecuentes (más de 3 en los últimos 7 días)
-        if (actualizado.getHistorialCambios() != null) {
-            LocalDateTime hace7dias = LocalDateTime.now().minusDays(7);
-            long recientes = actualizado.getHistorialCambios().stream()
-                    .filter(c -> c.getFechaCambio().isAfter(hace7dias))
-                    .count();
-            if (recientes > 3) {
-                alertas.add(crearNotificacion(actualizado, TipoAlerta.ALERTA_PRECIO, NivelAlerta.INFORMATIVA,
-                        "El producto ha sido actualizado más de 3 veces en los últimos 7 días.",
-                        usuario));
-            }
+        LocalDateTime hace7dias = LocalDateTime.now().minusDays(7);
+        long recientes = historialPrecioRepository.countByProductoAndFechaCambioAfter(actualizado, hace7dias);
+        if (recientes > 3) {
+            alertas.add(crearNotificacion(actualizado, TipoAlerta.ALERTA_PRECIO, NivelAlerta.INFORMATIVA,
+                    "El producto ha sido actualizado más de 3 veces en los últimos 7 días.",
+                    usuario));
         }
 
         // 4️⃣ Precio fuera de rango

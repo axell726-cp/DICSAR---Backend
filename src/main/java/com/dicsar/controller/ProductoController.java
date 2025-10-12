@@ -8,20 +8,22 @@ import org.springframework.web.bind.annotation.*;
 
 import com.dicsar.dto.ProductoDTO;
 import com.dicsar.dto.ResultadoProductoDTO;
+import com.dicsar.entity.HistorialPrecio;
 import com.dicsar.entity.Producto;
+import com.dicsar.enums.EstadoVencimiento;
+import com.dicsar.service.HistorialPrecioService;
 import com.dicsar.service.ProductoService;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("api/productos")
+@RequiredArgsConstructor
 public class ProductoController {
 
     private final ProductoService productoService;
-
-    public ProductoController(ProductoService productoService) {
-        this.productoService = productoService;
-    }
+    private final HistorialPrecioService historialPrecioService;
 
     @GetMapping
     public List<Producto> listar() {
@@ -52,4 +54,38 @@ public class ProductoController {
         productoService.eliminarConRegla(id);
         return ResponseEntity.ok("Producto eliminado correctamente");
     }
+    
+    @GetMapping("/{id}/historial-precios")
+    public ResponseEntity<List<HistorialPrecio>> obtenerHistorialPrecios(@PathVariable Long id) {
+        List<HistorialPrecio> historial = historialPrecioService.obtenerHistorialPorProducto(id);
+        return historial.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(historial);
+    }
+    
+    @GetMapping("/stock")
+    public ResponseEntity<List<Producto>> filtrarStock(
+            @RequestParam(required = false) Long categoriaId,
+            @RequestParam(required = false) Long proveedorId,
+            @RequestParam(required = false) EstadoVencimiento estadoVencimiento,
+            @RequestParam(required = false) Integer stockMin,
+            @RequestParam(required = false) Integer stockMax) {
+
+        // Validación de filtros vacíos
+        if (categoriaId == null && proveedorId == null && estadoVencimiento == null
+                && stockMin == null && stockMax == null) {
+            throw new IllegalArgumentException(
+                "Debe especificar al menos un parámetro de filtrado (categoría, proveedor, estado de vencimiento o rango de stock)."
+            );
+        }
+
+        List<Producto> productos = productoService.filtrarStock(
+                categoriaId, proveedorId, estadoVencimiento, stockMin, stockMax);
+
+        // Devolver 204 si no hay resultados
+        if (productos.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        return ResponseEntity.ok(productos);
+    }
+
 }
