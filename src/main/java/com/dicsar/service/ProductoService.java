@@ -65,7 +65,12 @@ public class ProductoService {
 		producto.setEstadoVencimiento(ProductoValidator.calcularEstadoVencimiento(dto.getFechaVencimiento()));
 
 		productoRepository.save(producto);
-
+		
+		// Registrar movimiento inicial (entrada por defecto al crear el producto)
+		if (producto.getStockActual() > 0) {
+			movimientoService.registrarMovimiento(producto, 0, producto.getStockActual(), usuario);
+		}
+		
 		List<Notificacion> alertas = verificarAlertasProducto(producto, usuario);
 
 		return new ResultadoProductoDTO(producto, alertas);
