@@ -42,5 +42,6 @@ public class Categoria {
     private LocalDateTime fechaActualizacion = LocalDateTime.now();
 
     @OneToMany(mappedBy = "categoria", cascade = CascadeType.ALL)
+    @JsonIgnore 
     private List<Producto> productos;
 }

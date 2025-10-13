@@ -245,4 +245,18 @@ public class ProductoService {
 
         return alertas;
     }
+    public List<Producto> filtrarStock(Long categoriaId, Long proveedorId, EstadoVencimiento estadoVencimiento,
+            Integer stockMin, Integer stockMax) {
+        List<Producto> productos = productoRepository.filtrarStock(
+                categoriaId, proveedorId, estadoVencimiento, stockMin, stockMax);
+
+        // Asegura que el estado de vencimiento esté actualizado
+        productos.forEach(p -> {
+            if (p.getFechaVencimiento() != null) {
+                p.setEstadoVencimiento(ProductoValidator.calcularEstadoVencimiento(p.getFechaVencimiento()));
+            }
+        });
+        return productos;
+    }
+
 }
