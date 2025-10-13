@@ -61,23 +61,33 @@ public class ProductoService {
     }
 
     // 🔹 Guardar producto nuevo
+ // 🔹 Guardar producto nuevo
     public ResultadoProductoDTO guardar(ProductoDTO dto, String usuario) {
         productoValidator.validar(dto);
         productoValidator.validarStock(dto);
         validarFechaVencimiento(dto.getFechaVencimiento());
 
+        // Construir el producto desde el DTO
         Producto producto = construirProductoDesdeDTO(dto);
         producto.setFechaCreacion(LocalDateTime.now());
         producto.setFechaActualizacion(LocalDateTime.now());
         producto.setEstado(true);
         producto.setEstadoVencimiento(ProductoValidator.calcularEstadoVencimiento(dto.getFechaVencimiento()));
 
+        // Guardar producto en base de datos
         productoRepository.save(producto);
 
+        // 🔸 Registrar movimiento inicial (entrada por defecto al crear el producto)
+        if (producto.getStockActual() != null && producto.getStockActual() > 0) {
+            movimientoService.registrarMovimiento(producto, 0, producto.getStockActual(), usuario);
+        }
+
+        // 🔸 Verificar alertas (vencimiento y stock)
         List<Notificacion> alertas = verificarAlertasProducto(producto, usuario);
 
         return new ResultadoProductoDTO(producto, alertas);
     }
+
 
     // 🔹 Actualizar producto existente
     public ResultadoProductoDTO actualizar(Long id, ProductoDTO dto, String usuario) {
