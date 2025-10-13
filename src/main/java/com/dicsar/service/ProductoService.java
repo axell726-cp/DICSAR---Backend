@@ -11,8 +11,8 @@ import org.springframework.stereotype.Service;
 
 import com.dicsar.dto.ProductoDTO;
 import com.dicsar.dto.ResultadoProductoDTO;
-import com.dicsar.entity.CambioPrecio;
 import com.dicsar.entity.Categoria;
+import com.dicsar.entity.HistorialPrecio;
 import com.dicsar.entity.Notificacion;
 import com.dicsar.entity.Producto;
 import com.dicsar.entity.Proveedor;
@@ -20,7 +20,7 @@ import com.dicsar.entity.UnidadMed;
 import com.dicsar.enums.EstadoVencimiento;
 import com.dicsar.enums.TipoAlerta;
 import com.dicsar.repository.CategoriaRepository;
-import com.dicsar.repository.NotificacionRepository;
+import com.dicsar.repository.HistorialPrecioRepository;
 import com.dicsar.repository.ProductoRepository;
 import com.dicsar.repository.ProveedorRepository;
 import com.dicsar.repository.UnidadMedRepository;
@@ -37,24 +37,27 @@ public class ProductoService {
     private final CategoriaRepository categoriaRepository;
     private final ProveedorRepository proveedorRepository;
     private final UnidadMedRepository unidadMedidaRepository;
+    private final HistorialPrecioRepository historialPrecioRepository;
     private final ReglaPrecioService reglaPrecioService;
     private final ProductoValidator productoValidator;
-    private final NotificacionRepository notificacionRepository;
     private final NotificacionService notificacionService;
+    private final MovimientoService movimientoService;
 
     // 🔹 Listar todos los productos
     public List<Producto> listar() {
         List<Producto> productos = productoRepository.findAll();
-        for (Producto p : productos) {
-            p.setEstadoVencimiento(ProductoValidator.calcularEstadoVencimiento(p.getFechaVencimiento()));
-        }
+        productos.forEach(p -> {
+            if (p.getFechaVencimiento() != null) {
+                p.setEstadoVencimiento(ProductoValidator.calcularEstadoVencimiento(p.getFechaVencimiento()));
+            }
+        });
         return productos;
     }
 
     // 🔹 Obtener producto por ID
     public Producto obtenerPorId(Long id) {
         return productoRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado con id: " + id));
     }
 
     // 🔹 Guardar producto nuevo
@@ -71,7 +74,6 @@ public class ProductoService {
 
         productoRepository.save(producto);
 
-        // 🔹 Generar alertas de vencimiento y stock automáticamente al guardar
         List<Notificacion> alertas = verificarAlertasProducto(producto, usuario);
 
         return new ResultadoProductoDTO(producto, alertas);
@@ -87,33 +89,31 @@ public class ProductoService {
         Producto anterior = producto.copiaLigera();
 
         // Registrar cambio de precio
-        if (!Objects.equals(producto.getPrecio(), dto.getPrecioBase())) {
-            if (producto.getHistorialCambios() == null)
-                producto.setHistorialCambios(new ArrayList<>());
+        registrarCambioPrecio(producto, dto.getPrecioBase(), usuario);
 
-            producto.getHistorialCambios().add(
-                    new CambioPrecio(LocalDateTime.now(), producto.getPrecio(), dto.getPrecioBase())
-            );
-        }
-
-        // Actualizar campos
+        // Actualizar datos del producto
         producto.setNombre(dto.getNombre());
         producto.setDescripcion(dto.getDescripcion());
         producto.setCodigo(dto.getCodigo());
         producto.setPrecio(dto.getPrecioBase());
         producto.setStockActual(dto.getStockActual());
         producto.setStockMinimo(dto.getStockMinimo());
-        producto.setFechaActualizacion(LocalDateTime.now());
+        producto.setPrecioCompra(dto.getPrecioCompra());
+        producto.setFechaVencimiento(dto.getFechaVencimiento());
         producto.setCategoria(obtenerCategoria(dto.getCategoriaId()));
         producto.setProveedor(obtenerProveedor(dto.getProveedorId()));
         producto.setUnidadMedida(obtenerUnidad(dto.getUnidadMedidaId()));
-        producto.setPrecioCompra(dto.getPrecioCompra());
-        producto.setFechaVencimiento(dto.getFechaVencimiento());
         producto.setEstadoVencimiento(ProductoValidator.calcularEstadoVencimiento(dto.getFechaVencimiento()));
+        producto.setFechaActualizacion(LocalDateTime.now());
 
         productoRepository.save(producto);
 
-        // Evaluar alertas de precio + vencimiento + stock
+        // Registrar movimiento si cambió el stock
+        if (!Objects.equals(anterior.getStockActual(), producto.getStockActual())) {
+            movimientoService.registrarMovimiento(producto, anterior.getStockActual(), producto.getStockActual(), usuario);
+        }
+
+        // Evaluar reglas y alertas
         List<Notificacion> alertas = reglaPrecioService.evaluarCambios(anterior, producto, usuario);
         alertas.addAll(verificarAlertasProducto(producto, usuario));
 
@@ -186,6 +186,21 @@ public class ProductoService {
     private void validarFechaVencimiento(LocalDate fechaVencimiento) {
         if (fechaVencimiento == null || !fechaVencimiento.isAfter(LocalDate.now())) {
             throw new RuntimeException("La fecha de vencimiento no puede ser menor o igual a la fecha actual.");
+        }
+    }
+
+    // 🔹 Registrar histórico de precios
+    private void registrarCambioPrecio(Producto producto, Double nuevoPrecio, String usuario) {
+        if (!Objects.equals(producto.getPrecio(), nuevoPrecio)) {
+            HistorialPrecio registro = HistorialPrecio.builder()
+                    .producto(producto)
+                    .precioAnterior(producto.getPrecio())
+                    .precioNuevo(nuevoPrecio)
+                    .usuario(usuario)
+                    .fechaCambio(LocalDateTime.now())
+                    .build();
+
+            historialPrecioRepository.save(registro);
         }
     }
 
