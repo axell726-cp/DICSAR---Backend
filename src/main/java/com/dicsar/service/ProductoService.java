@@ -122,7 +122,6 @@ public class ProductoService {
         if (!Objects.equals(anterior.getStockActual(), producto.getStockActual())) {
             movimientoService.registrarMovimiento(producto, anterior.getStockActual(), producto.getStockActual(), usuario);
         }
-
         // Evaluar reglas y alertas
         List<Notificacion> alertas = reglaPrecioService.evaluarCambios(anterior, producto, usuario);
         alertas.addAll(verificarAlertasProducto(producto, usuario));
@@ -257,6 +256,21 @@ public class ProductoService {
             }
         });
         return productos;
+    }
+
+    public void actualizarSoloPrecio(Long id, Double nuevoPrecio, String usuario) {
+        Producto producto = obtenerPorId(id);
+        registrarCambioPrecio(producto, nuevoPrecio, usuario);
+        producto.setPrecio(nuevoPrecio);
+        producto.setFechaActualizacion(LocalDateTime.now());
+        productoRepository.save(producto);
+    }
+    
+    public void actualizarSoloEstado(Long id, boolean nuevoEstado, String usuario) {
+        Producto producto = obtenerPorId(id);
+        producto.setEstado(nuevoEstado);
+        producto.setFechaActualizacion(LocalDateTime.now());
+        productoRepository.save(producto);
     }
 
 }

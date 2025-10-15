@@ -42,11 +42,21 @@ public class ProductoController {
         ResultadoProductoDTO resultado = productoService.actualizar(id, dto, "admin");
         return ResponseEntity.ok(resultado);
     }
-
-    @PutMapping("/{id}/estado")
-    public ResponseEntity<String> cambiarEstado(@PathVariable Long id, @RequestParam boolean nuevoEstado) {
-        productoService.cambiarEstado(id, nuevoEstado);
-        return ResponseEntity.ok("Estado actualizado correctamente");
+    
+    @PatchMapping("/{id}/precio")
+    public ResponseEntity<String> actualizarPrecio(@PathVariable Long id,
+                                                   @RequestParam Double nuevoPrecio,
+                                                   @RequestParam String usuario) {
+        productoService.actualizarSoloPrecio(id, nuevoPrecio, usuario);
+        return ResponseEntity.ok("Precio actualizado correctamente");
+    }
+    
+    @PatchMapping("/{id}/estado")
+    public ResponseEntity<String> actualizarEstado(@PathVariable Long id,
+                                                   @RequestParam boolean nuevoEstado,
+                                                   @RequestParam String usuario) {
+        productoService.actualizarSoloEstado(id, nuevoEstado, usuario);
+        return ResponseEntity.ok("Estado del producto actualizado correctamente");
     }
 
     @DeleteMapping("/{id}")
