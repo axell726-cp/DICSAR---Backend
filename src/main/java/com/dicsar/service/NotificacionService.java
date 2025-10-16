@@ -18,6 +18,7 @@ import com.dicsar.enums.TipoAlerta;
 import com.dicsar.repository.NotificacionRepository;
 import com.dicsar.repository.ProductoRepository;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -169,4 +170,13 @@ public class NotificacionService {
         }
         System.out.println("✅ Revisión automática de vencimientos ejecutada: " + LocalDate.now());
     }
+    
+ // 🔹 Eliminar notificación por ID
+    public void eliminar(Long id) {
+        if (!notificacionRepository.existsById(id)) {
+            throw new EntityNotFoundException("No se encontró la notificación con ID: " + id);
+        }
+        notificacionRepository.deleteById(id);
+    }
+
 }

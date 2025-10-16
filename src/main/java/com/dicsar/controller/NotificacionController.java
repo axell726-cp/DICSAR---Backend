@@ -2,6 +2,7 @@ package com.dicsar.controller;
 
 import java.util.List;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.dicsar.entity.Notificacion;
@@ -27,4 +28,12 @@ public class NotificacionController {
     public List<Notificacion> listarPorProducto(@PathVariable Long idProducto) {
         return notificacionService.listarPorProducto(idProducto);
     }
+    
+ // 🔹 Eliminar una notificación por ID
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        notificacionService.eliminar(id);
+        return ResponseEntity.noContent().build(); // 204 No Content
+    }
+
 }
